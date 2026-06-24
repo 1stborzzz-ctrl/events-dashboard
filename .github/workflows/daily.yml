@@ -1,0 +1,31 @@
+name: Daily events scrape
+
+on:
+  schedule:
+    - cron: '0 5 * * *'   # каждый день в 05:00 UTC (~08:00 МСК)
+  workflow_dispatch: {}    # + можно запустить вручную кнопкой в GitHub
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        working-directory: scraper
+        run: npm install
+
+      - name: Install Playwright browsers
+        working-directory: scraper
+        run: npx playwright install --with-deps chromium
+
+      - name: Run scraper
+        working-directory: scraper
+        env:
+          SHEET_ID: ${{ secrets.SHEET_ID }}
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+        run: npm run scrape
