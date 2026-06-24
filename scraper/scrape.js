@@ -29,27 +29,51 @@ const SOURCES = [
 
 const DATE_RE = /(\d{1,2}\s?[-–]?\s?\d{0,2}\s?(январ|феврал|март|апрел|ма[йя]|июн|июл|август|сентябр|октябр|ноябр|декабр)[а-я]*\s?\d{0,4})/i;
 
+// Слова-маркеры мусора: если ссылка или её текст содержит что-то из этого —
+// почти наверняка не карточка мероприятия, а навигация/футер/контакты.
+const JUNK_RE = /(контакт|ваканси|cookie|перепечат|конфиденциальн|политик|реклам|подпис|telegram|вконтакте|vk\.com|t\.me|tel:|mailto:|\+7\s?\(|свидетельств|фс\s?77)/i;
+
 async function genericParse(page) {
-  // Берём все ссылки на странице, рядом с которыми (в тексте блока-родителя)
-  // встречается похожее на дату слово. Это эвристика — подходит для
-  // карточных списков мероприятий на большинстве сайтов.
-  return await page.evaluate((dateRegexSrc) => {
+  return await page.evaluate((dateRegexSrc, junkRegexSrc) => {
     const dateRe = new RegExp(dateRegexSrc, 'i');
+    const junkRe = new RegExp(junkRegexSrc, 'i');
+    // Карточкой считаем только элемент, у которого явно "карточный" класс/тег —
+    // обычный <div> или весь документ не годится, иначе ловим футер целиком.
+    const CARD_SELECTOR = 'article, li, [class*="card" i], [class*="event" i], [class*="item" i], [class*="conf" i]';
+
     const seen = new Set();
     const out = [];
-    const links = Array.from(document.querySelectorAll('a[href]'));
-    for (const a of links) {
-      const text = (a.closest('article, li, .card, .event, .item, div') || a).innerText || '';
-      const m = text.match(dateRe);
-      const title = (a.innerText || '').trim();
-      if (!m || title.length < 8 || title.length > 200) continue;
-      const href = a.href;
+    const cards = Array.from(document.querySelectorAll(CARD_SELECTOR));
+
+    for (const card of cards) {
+      // Пропускаем гигантские контейнеры (типа целого футера или сайдбара
+      // со списком всех страниц) — у реальной карточки мероприятия текст компактный.
+      const text = (card.innerText || '').trim();
+      if (!text || text.length > 600) continue;
+
+      const dateMatch = text.match(dateRe);
+      if (!dateMatch) continue;
+
+      const link = card.querySelector('a[href]');
+      if (!link) continue;
+      const href = link.href;
+      if (junkRe.test(href) || junkRe.test(text)) continue;
       if (seen.has(href)) continue;
+
+      // Заголовок — либо текст самой ссылки, либо текст заголовка внутри карточки
+      const headingEl = card.querySelector('h1, h2, h3, h4, [class*="title" i], [class*="name" i]');
+      let title = (headingEl ? headingEl.innerText : link.innerText || '').trim();
+      if (!title || title.length < 10 || title.length > 200) continue;
+      if (junkRe.test(title)) continue;
+      if (seen.has(title)) continue;
+
       seen.add(href);
-      out.push({ title, date: m[0].trim(), link: href });
+      seen.add(title);
+      out.push({ title, date: dateMatch[0].trim(), link: href });
+      if (out.length >= 30) break;
     }
-    return out.slice(0, 40);
-  }, DATE_RE.source);
+    return out;
+  }, DATE_RE.source, JUNK_RE.source);
 }
 
 async function scrapeSource(browser, source) {
