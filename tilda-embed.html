@@ -1,0 +1,52 @@
+<div id="events-dashboard" style="font-family: Arial, sans-serif;">
+  <p style="text-align:center; color:#888;">Загружаем мероприятия…</p>
+</div>
+
+<style>
+  .ev-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+  .ev-card { border: 1px solid #e2e2e2; border-radius: 10px; padding: 16px; background: #fff; }
+  .ev-topic { display:inline-block; font-size:12px; color:#1a5fb4; background:#eaf1fc; border-radius:6px; padding:2px 8px; margin-bottom:8px; }
+  .ev-date { font-weight:600; color:#222; margin-bottom:4px; }
+  .ev-title { font-size:15px; color:#111; margin-bottom:8px; line-height:1.35; }
+  .ev-source { font-size:12px; color:#999; }
+  .ev-link { display:inline-block; margin-top:8px; font-size:13px; color:#1a5fb4; text-decoration:none; }
+</style>
+
+<script>
+(function () {
+  // Вставьте сюда URL вашего Apps Script веб-приложения (см. apps-script/Code.gs)
+  var DATA_URL = 'https://script.google.com/macros/s/ВАШ_DEPLOYMENT_ID/exec';
+
+  fetch(DATA_URL)
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      var events = data.events || [];
+      var root = document.getElementById('events-dashboard');
+      if (!events.length) {
+        root.innerHTML = '<p style="text-align:center;color:#888;">Мероприятия не найдены.</p>';
+        return;
+      }
+      var html = '<div class="ev-grid">' + events.map(function (e) {
+        return '<div class="ev-card">' +
+          '<span class="ev-topic">' + escapeHtml(e.topic || '') + '</span>' +
+          '<div class="ev-date">' + escapeHtml(e.date || '') + '</div>' +
+          '<div class="ev-title">' + escapeHtml(e.title || '') + '</div>' +
+          '<div class="ev-source">' + escapeHtml(e.source || '') + '</div>' +
+          (e.link ? '<a class="ev-link" href="' + e.link + '" target="_blank" rel="noopener">Подробнее →</a>' : '') +
+          '</div>';
+      }).join('') + '</div>';
+      root.innerHTML = html;
+    })
+    .catch(function (err) {
+      document.getElementById('events-dashboard').innerHTML =
+        '<p style="text-align:center;color:#c00;">Не удалось загрузить мероприятия.</p>';
+      console.error(err);
+    });
+
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+})();
+</script>
