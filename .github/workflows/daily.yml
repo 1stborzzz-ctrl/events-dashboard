@@ -1,8 +1,8 @@
-name: Daily events scrape
+name: Hourly events scrape
 
 on:
   schedule:
-    - cron: '0 5 * * *'   # каждый день в 05:00 UTC (~08:00 МСК)
+    - cron: '0 * * * *'   # каждый час, в начале каждого часа (UTC)
   workflow_dispatch: {}    # + можно запустить вручную кнопкой в GitHub
 
 jobs:
