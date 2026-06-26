@@ -2,13 +2,11 @@
  * Раз в сутки (через GitHub Actions) открывает сайты headless-браузером,
  * вытаскивает мероприятия и записывает их в Google Таблицу.
  *
- * ВАЖНО: сайты вроде event.pravo.ru рендерят список через JS (React/SPA),
- * поэтому простым fetch/HTML-парсингом их не взять — нужен реальный браузер.
- * Playwright = headless Chrome, поэтому это работает.
- *
- * Селекторы ниже — широкие, эвристические (ищем блоки, где рядом есть
- * дата + заголовок + ссылка). Если на каком-то сайте верстка нестандартная,
- * для него можно прописать отдельную функцию-парсер (см. SOURCES).
+ * Селекторы — эвристические (ищем компактные карточные блоки с датой внутри
+ * + ссылкой). Жёсткие правила ниже специально отбраковывают: навигацию,
+ * футер, контакты, "вложенные" дубли одной и той же карточки, и мусорные
+ * "даты" вида "00 21 октября" (когда регулярка случайно склеила время и дату
+ * из разных мест текста).
  */
 const { chromium } = require('playwright');
 const { google } = require('googleapis');
@@ -16,72 +14,107 @@ const { google } = require('googleapis');
 const SHEET_ID = process.env.SHEET_ID;
 const SHEET_NAME = 'Events';
 
-// Список источников. Каждый — либо обычная страница (generic-парсер),
-// либо кастомная функция parse(page) -> [{title, date, place, link}]
+// type: 'generic' — обычный сайт (эвристика по карточкам).
+// type: 'telegram' — публичный веб-просмотр канала t.me/s/<name> (стабильная вёрстка).
 const SOURCES = [
-  { name: 'Право.ru — Конференции', url: 'https://event.pravo.ru/', topic: 'Юридические конференции' },
-  { name: 'Форум Право-300', url: 'https://forum300.pravo.ru/', topic: 'Юридический форум' },
-  { name: 'Event.law.ru', url: 'https://event.law.ru/', topic: 'Вебинары для юристов' },
-  { name: 'All-Events (тема Право)', url: 'https://all-events.ru/events/calendar/theme-is-pravo/', topic: 'Юр. мероприятия' },
-  { name: 'Московская биржа — мероприятия', url: 'https://www.moex.com/s1194', topic: 'Рынки капиталов' },
-  { name: 'НАУФОР — мероприятия', url: 'https://www.naufor.ru/tree.asp?n=21097', topic: 'Рынок ценных бумаг' },
+  { name: 'Право.ru — Конференции', url: 'https://event.pravo.ru/', topic: 'Юридические конференции', type: 'generic' },
+  { name: 'Форум Право-300', url: 'https://forum300.pravo.ru/', topic: 'Юридический форум', type: 'generic' },
+  { name: 'Event.law.ru', url: 'https://event.law.ru/seminar', topic: 'Вебинары для юристов', type: 'generic' },
+  { name: 'All-Events (Москва, тема Право)', url: 'https://all-events.ru/events/calendar/city-is-moskva/theme-is-pravo/', topic: 'Юр. мероприятия', type: 'generic' },
+  { name: 'Statut.ru — мероприятия', url: 'https://statut.ru/events/', topic: 'Юридические конференции', type: 'generic' },
+  { name: 'Zakon.ru — конференции', url: 'https://zakon.ru/Conference/List', topic: 'Юридические конференции', type: 'generic' },
+  { name: 'Московская биржа — мероприятия', url: 'https://www.moex.com/s1194', topic: 'Рынки капиталов', type: 'generic' },
+  { name: 'НАУФОР — мероприятия', url: 'https://www.naufor.ru/tree.asp?n=21097', topic: 'Рынок ценных бумаг', type: 'generic' },
+  { name: 'Aesthetics of Law (Telegram)', url: 'https://t.me/s/aestheticsoflawevents', topic: 'Юр. мероприятия', type: 'telegram' },
 ];
 
-const DATE_RE = /(\d{1,2}\s?[-–]?\s?\d{0,2}\s?(январ|феврал|март|апрел|ма[йя]|июн|июл|август|сентябр|октябр|ноябр|декабр)[а-я]*\s?\d{0,4})/i;
+// День (1-31), не приклеенный слева к ":" (чтобы не цеплять "10:00"),
+// сразу за которым (не дальше 5 символов) идёт название месяца.
+const DATE_RE = /(?<![:\d])([0-3]?\d)(\s*[-–]\s*[0-3]?\d)?\s{0,3}(январ|феврал|март|апрел|ма[йя]|июн|июл|август|сентябр|октябр|ноябр|декабр)[а-я]*(\s?\d{4})?/i;
 
-// Слова-маркеры мусора: если ссылка или её текст содержит что-то из этого —
-// почти наверняка не карточка мероприятия, а навигация/футер/контакты.
-const JUNK_RE = /(контакт|ваканси|cookie|перепечат|конфиденциальн|политик|реклам|подпис|telegram|вконтакте|vk\.com|t\.me|tel:|mailto:|\+7\s?\(|свидетельств|фс\s?77)/i;
+const JUNK_RE = /(контакт|ваканси|cookie|перепечат|конфиденциальн|^политик|реклам|подпис|вконтакте|vk\.com|t\.me\/(?!s\/)|tel:|mailto:|\+7\s?\(|свидетельств|фс\s?77|войти|регистраци[яи]\s*$|личный кабинет)/i;
 
 async function genericParse(page) {
   return await page.evaluate((dateRegexSrc, junkRegexSrc) => {
     const dateRe = new RegExp(dateRegexSrc, 'i');
     const junkRe = new RegExp(junkRegexSrc, 'i');
-    // Карточкой считаем только элемент, у которого явно "карточный" класс/тег —
-    // обычный <div> или весь документ не годится, иначе ловим футер целиком.
     const CARD_SELECTOR = 'article, li, [class*="card" i], [class*="event" i], [class*="item" i], [class*="conf" i]';
 
-    const seen = new Set();
+    let cards = Array.from(document.querySelectorAll(CARD_SELECTOR));
+
+    // Убираем "внешние" карточки, если внутри них есть другая карточка из
+    // того же списка — иначе один и тот же блок попадёт и как родитель
+    // (с длинным текстом сразу нескольких мероприятий), и как потомок.
+    const cardSet = new Set(cards);
+    cards = cards.filter(card => {
+      for (const other of cardSet) {
+        if (other !== card && card.contains(other)) return false; // у card есть вложенный card → это внешний контейнер, пропускаем
+      }
+      return true;
+    });
+
+    const seenHref = new Set();
+    const seenTitle = new Set();
     const out = [];
-    const cards = Array.from(document.querySelectorAll(CARD_SELECTOR));
 
     for (const card of cards) {
-      // Пропускаем гигантские контейнеры (типа целого футера или сайдбара
-      // со списком всех страниц) — у реальной карточки мероприятия текст компактный.
       const text = (card.innerText || '').trim();
-      if (!text || text.length > 600) continue;
+      if (!text || text.length > 400) continue;
 
       const dateMatch = text.match(dateRe);
       if (!dateMatch) continue;
 
-      const link = card.querySelector('a[href]');
+      const link = card.querySelector('a[href]') || card.closest('a[href]');
       if (!link) continue;
       const href = link.href;
       if (junkRe.test(href) || junkRe.test(text)) continue;
-      if (seen.has(href)) continue;
+      if (seenHref.has(href)) continue;
 
-      // Заголовок — либо текст самой ссылки, либо текст заголовка внутри карточки
       const headingEl = card.querySelector('h1, h2, h3, h4, [class*="title" i], [class*="name" i]');
       let title = (headingEl ? headingEl.innerText : link.innerText || '').trim();
-      if (!title || title.length < 10 || title.length > 200) continue;
+      title = title.replace(/\s+/g, ' ');
+      if (!title || title.length < 12 || title.length > 200) continue;
       if (junkRe.test(title)) continue;
-      if (seen.has(title)) continue;
+      if (/^\d/.test(title) && title.length < 25) continue; // заголовок типа "00 21 октября" без реального названия
+      if (seenTitle.has(title)) continue;
 
-      seen.add(href);
-      seen.add(title);
-      out.push({ title, date: dateMatch[0].trim(), link: href });
-      if (out.length >= 30) break;
+      seenHref.add(href);
+      seenTitle.add(title);
+      out.push({ title, date: dateMatch[0].replace(/\s+/g, ' ').trim(), link: href });
+      if (out.length >= 25) break;
     }
     return out;
   }, DATE_RE.source, JUNK_RE.source);
+}
+
+async function telegramParse(page) {
+  // t.me/s/<channel> — стабильная публичная вёрстка, без JS-рендера.
+  return await page.evaluate(() => {
+    const out = [];
+    const posts = Array.from(document.querySelectorAll('.tgme_widget_message'));
+    for (const post of posts) {
+      const textEl = post.querySelector('.tgme_widget_message_text');
+      const timeEl = post.querySelector('.tgme_widget_message_date time');
+      const linkEl = post.querySelector('.tgme_widget_message_date');
+      if (!textEl || !timeEl || !linkEl) continue;
+      const text = textEl.innerText.trim().replace(/\s+/g, ' ');
+      if (text.length < 15) continue;
+      out.push({
+        title: text.slice(0, 180),
+        date: new Date(timeEl.getAttribute('datetime')).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' }),
+        link: linkEl.href,
+      });
+    }
+    return out.slice(-25); // последние 25 постов канала
+  });
 }
 
 async function scrapeSource(browser, source) {
   const page = await browser.newPage({ userAgent: 'Mozilla/5.0 (compatible; EventsBot/1.0)' });
   try {
     await page.goto(source.url, { waitUntil: 'networkidle', timeout: 45000 });
-    await page.waitForTimeout(2000); // дать SPA дорендериться
-    const events = await genericParse(page);
+    await page.waitForTimeout(2000);
+    const events = source.type === 'telegram' ? await telegramParse(page) : await genericParse(page);
     return events.map(e => ({ ...e, source: source.name, topic: source.topic }));
   } catch (err) {
     console.error(`Ошибка при обработке ${source.url}:`, err.message);
@@ -102,7 +135,6 @@ async function writeToSheet(rows) {
   const updatedAt = new Date().toLocaleString('ru-RU');
   const values = rows.map(r => [r.date, r.title, r.topic, r.source, r.link, updatedAt]);
 
-  // Полностью перезаписываем лист — проще, чем дедуплицировать построчно
   await sheets.spreadsheets.values.clear({ spreadsheetId: SHEET_ID, range: `${SHEET_NAME}!A:F` });
   await sheets.spreadsheets.values.update({
     spreadsheetId: SHEET_ID,
