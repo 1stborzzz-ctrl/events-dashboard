@@ -40,23 +40,10 @@ async function genericParse(page) {
     const junkRe = new RegExp(junkRegexSrc, 'i');
     const CARD_SELECTOR = 'article, li, [class*="card" i], [class*="event" i], [class*="item" i], [class*="conf" i]';
 
-    let cards = Array.from(document.querySelectorAll(CARD_SELECTOR));
+    const cards = Array.from(document.querySelectorAll(CARD_SELECTOR));
 
-    // Убираем "внешние" карточки, если внутри них есть другая карточка из
-    // того же списка — иначе один и тот же блок попадёт и как родитель
-    // (с длинным текстом сразу нескольких мероприятий), и как потомок.
-    const cardSet = new Set(cards);
-    cards = cards.filter(card => {
-      for (const other of cardSet) {
-        if (other !== card && card.contains(other)) return false; // у card есть вложенный card → это внешний контейнер, пропускаем
-      }
-      return true;
-    });
-
-    const seenHref = new Set();
-    const seenTitle = new Set();
-    const out = [];
-
+    // Шаг 1: собираем всех кандидатов без отбраковки дублей.
+    const candidates = [];
     for (const card of cards) {
       const text = (card.innerText || '').trim();
       if (!text || text.length > 400) continue;
@@ -68,19 +55,36 @@ async function genericParse(page) {
       if (!link) continue;
       const href = link.href;
       if (junkRe.test(href) || junkRe.test(text)) continue;
-      if (seenHref.has(href)) continue;
 
       const headingEl = card.querySelector('h1, h2, h3, h4, [class*="title" i], [class*="name" i]');
-      let title = (headingEl ? headingEl.innerText : link.innerText || '').trim();
-      title = title.replace(/\s+/g, ' ');
+      let title = (headingEl ? headingEl.innerText : link.innerText || '').trim().replace(/\s+/g, ' ');
       if (!title || title.length < 12 || title.length > 200) continue;
       if (junkRe.test(title)) continue;
-      if (/^\d/.test(title) && title.length < 25) continue; // заголовок типа "00 21 октября" без реального названия
-      if (seenTitle.has(title)) continue;
+      if (/^\d/.test(title) && title.length < 25) continue;
 
-      seenHref.add(href);
-      seenTitle.add(title);
-      out.push({ title, date: dateMatch[0].replace(/\s+/g, ' ').trim(), link: href });
+      candidates.push({ text, title, date: dateMatch[0].replace(/\s+/g, ' ').trim(), href });
+    }
+
+    // Шаг 2: если карточка-контейнер случайно тоже подошла по правилам (её
+    // текст просто включает в себя текст другой, более мелкой карточки) —
+    // это дубль одного мероприятия. Оставляем самый компактный вариант.
+    candidates.sort((a, b) => a.text.length - b.text.length);
+    const kept = [];
+    for (const c of candidates) {
+      const isContainerOfExisting = kept.some(k => k !== c && c.text.includes(k.text) && c.text.length > k.text.length);
+      if (isContainerOfExisting) continue;
+      kept.push(c);
+    }
+
+    // Шаг 3: финальная дедупликация по ссылке/заголовку.
+    const seenHref = new Set();
+    const seenTitle = new Set();
+    const out = [];
+    for (const c of kept) {
+      if (seenHref.has(c.href) || seenTitle.has(c.title)) continue;
+      seenHref.add(c.href);
+      seenTitle.add(c.title);
+      out.push({ title: c.title, date: c.date, link: c.href });
       if (out.length >= 25) break;
     }
     return out;
@@ -95,14 +99,21 @@ async function telegramParse(page) {
     for (const post of posts) {
       const textEl = post.querySelector('.tgme_widget_message_text');
       const timeEl = post.querySelector('.tgme_widget_message_date time');
-      const linkEl = post.querySelector('.tgme_widget_message_date');
-      if (!textEl || !timeEl || !linkEl) continue;
+      const postLinkEl = post.querySelector('.tgme_widget_message_date');
+      if (!textEl || !timeEl || !postLinkEl) continue;
       const text = textEl.innerText.trim().replace(/\s+/g, ' ');
       if (text.length < 15) continue;
+
+      // Ищем в тексте поста первую ссылку на внешний ресурс (не на сам Telegram) —
+      // это, как правило, страница регистрации/описания мероприятия.
+      const linksInText = Array.from(textEl.querySelectorAll('a[href]'));
+      const externalLink = linksInText.find(a => !/t\.me|telegram\.me|telegram\.org/i.test(a.href));
+      const link = externalLink ? externalLink.href : postLinkEl.href;
+
       out.push({
         title: text.slice(0, 180),
         date: new Date(timeEl.getAttribute('datetime')).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' }),
-        link: linkEl.href,
+        link,
       });
     }
     return out.slice(-25); // последние 25 постов канала
