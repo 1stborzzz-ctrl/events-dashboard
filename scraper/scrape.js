@@ -19,17 +19,17 @@ const STATIC_EVENTS = [
     title: 'V Казанский международный юридический форум',
     topic: 'Юридические конференции',
     place: 'Казань',
-    source: 'Отраслевой календарь',
-    link: '',
+    source: 'Прочие мероприятия',
+    link: 'https://kazanlegalforum.org/',
     cost: 'Партнер сессии 150 000 руб.',
   },
   {
     date: '24 сентября 2026',
     title: 'XVIII Российский конгресс Private Equity и XVI Форум венчурных инвесторов',
-    topic: 'Рынки капиталов',
+    topic: 'M&A и сделки',
     place: 'Москва',
-    source: 'Отраслевой календарь',
-    link: '',
+    source: 'Прочие мероприятия',
+    link: 'https://cbonds-congress.ru/',
     cost: 'Партнер/спикер 280 000 руб.',
   },
   {
@@ -37,8 +37,8 @@ const STATIC_EVENTS = [
     title: 'Семейное и наследственное право: законодательные изменения и актуальная практика',
     topic: 'Юридические конференции',
     place: 'Москва',
-    source: 'Отраслевой календарь',
-    link: '',
+    source: 'Прочие мероприятия',
+    link: 'https://event.pravo.ru/',
     cost: 'Делегат 28 000 + НДС',
   },
   {
@@ -46,8 +46,8 @@ const STATIC_EVENTS = [
     title: 'Корпоративное право 2026',
     topic: 'Корпоративное право',
     place: 'Москва',
-    source: 'Отраслевой календарь',
-    link: '',
+    source: 'Прочие мероприятия',
+    link: 'https://conflaw.ru/',
     cost: 'Делегат очно 30 000 / онлайн 21 000 руб.',
   },
   {
@@ -55,8 +55,8 @@ const STATIC_EVENTS = [
     title: 'Корпоративное право и корпоративное управление — 2026',
     topic: 'Корпоративное право',
     place: 'Москва',
-    source: 'Отраслевой календарь',
-    link: '',
+    source: 'Прочие мероприятия',
+    link: 'https://event.pravo.ru/',
     cost: 'Делегат 35 000 + НДС',
   },
   {
@@ -64,7 +64,7 @@ const STATIC_EVENTS = [
     title: 'III Форум «Рынок ценных бумаг»',
     topic: 'Рынки капиталов',
     place: 'Москва',
-    source: 'Отраслевой календарь',
+    source: 'Прочие мероприятия',
     link: 'https://acra-forum.ru/events/303?tab=about',
     cost: '65 000 + НДС при оплате до 02.10',
   },
@@ -74,7 +74,7 @@ const STATIC_EVENTS = [
     title: 'XX Сибирская венчурная ярмарка',
     topic: 'Рынки капиталов',
     place: 'Новосибирск',
-    source: 'Отраслевой календарь',
+    source: 'Прочие мероприятия',
     link: 'https://sibventurefair.ru/',
     cost: '',
   },
@@ -83,8 +83,8 @@ const STATIC_EVENTS = [
     title: '«Мой Бизнес Форум 2026»',
     topic: 'Бизнес-форум',
     place: 'Санкт-Петербург',
-    source: 'Отраслевой календарь',
-    link: '',
+    source: 'Прочие мероприятия',
+    link: 'https://mybusiness.spb.ru/',
     cost: '',
   },
   {
@@ -92,8 +92,8 @@ const STATIC_EVENTS = [
     title: 'XII Сибирская Юридическая Неделя (SibLegalWeek)',
     topic: 'Юридические конференции',
     place: 'Новосибирск',
-    source: 'Отраслевой календарь',
-    link: '',
+    source: 'Прочие мероприятия',
+    link: 'https://www.siblegalweek.ru/',
     cost: 'Партнерский пакет от 100 000 руб.',
   },
   {
@@ -101,7 +101,7 @@ const STATIC_EVENTS = [
     title: 'IX Форум «Финансовые инструменты для сектора роста. Возможности привлечения финансирования для МСП»',
     topic: 'Рынки капиталов',
     place: 'Нижний Новгород',
-    source: 'Отраслевой календарь',
+    source: 'Прочие мероприятия',
     link: '',
     cost: 'Пакет «Официальный партнер» 150 000 руб.',
   },
@@ -136,18 +136,32 @@ const STATIC_EVENTS = [
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ДИНАМИЧЕСКИЕ ИСТОЧНИКИ (парсинг каждые 8 часов)
+// ДИНАМИЧЕСКИЕ ИСТОЧНИКИ (парсинг 3 раза в сутки)
 // ─────────────────────────────────────────────────────────────────────────────
 const SOURCES = [
-  { name: 'Право.ru — Конференции', url: 'https://event.pravo.ru/', topic: 'Юридические конференции', type: 'generic' },
-  { name: 'Форум Право-300', url: 'https://forum300.pravo.ru/', topic: 'Юридический форум', type: 'generic' },
-  { name: 'Event.law.ru', url: 'https://event.law.ru/seminar', topic: 'Вебинары для юристов', type: 'generic' },
-  { name: 'All-Events (Москва, Право)', url: 'https://all-events.ru/events/calendar/city-is-moskva/theme-is-pravo/', topic: 'Юр. мероприятия', type: 'generic' },
-  { name: 'Statut.ru — мероприятия', url: 'https://statut.ru/events/', topic: 'Юридические конференции', type: 'generic' },
-  { name: 'Zakon.ru — конференции', url: 'https://zakon.ru/Conference/List', topic: 'Юридические конференции', type: 'generic' },
-  { name: 'Московская биржа', url: 'https://www.moex.com/s1194', topic: 'Рынки капиталов', type: 'generic' },
-  { name: 'НАУФОР — мероприятия', url: 'https://www.naufor.ru/tree.asp?n=21097', topic: 'Рынок ценных бумаг', type: 'generic' },
-  { name: 'Aesthetics of Law (Telegram)', url: 'https://t.me/s/aestheticsoflawevents', topic: 'Юр. мероприятия', type: 'telegram' },
+  // ── Юридические ──────────────────────────────────────────────────────────────
+  { name: 'Право.ru — Конференции',       url: 'https://event.pravo.ru/',                                          topic: 'Юридические конференции', type: 'generic' },
+  { name: 'Форум Право-300',              url: 'https://forum300.pravo.ru/',                                        topic: 'Юридические конференции', type: 'generic' },
+  { name: 'Event.law.ru',                 url: 'https://event.law.ru/seminar',                                      topic: 'Юридические конференции', type: 'generic' },
+  { name: 'All-Events (Москва, Право)',   url: 'https://all-events.ru/events/calendar/city-is-moskva/theme-is-pravo/', topic: 'Юридические конференции', type: 'generic' },
+  { name: 'Statut.ru — мероприятия',     url: 'https://statut.ru/events/',                                         topic: 'Юридические конференции', type: 'generic' },
+  { name: 'Zakon.ru — конференции',      url: 'https://zakon.ru/Conference/List',                                   topic: 'Юридические конференции', type: 'generic' },
+
+  // ── Рынки капиталов, M&A, Private Equity ─────────────────────────────────────
+  { name: 'Cbonds Congress',              url: 'https://cbonds-congress.ru/events/',                                 topic: 'Рынки капиталов',         type: 'generic' },
+  { name: 'АКРА Форум',                  url: 'https://acra-forum.ru/events/',                                      topic: 'Рынки капиталов',         type: 'generic' },
+  { name: 'НАУФОР — мероприятия',        url: 'https://www.naufor.ru/tree.asp?n=21097',                            topic: 'Рынок ценных бумаг',      type: 'generic' },
+  { name: 'Московская биржа',            url: 'https://www.moex.com/s1194',                                        topic: 'Рынки капиталов',         type: 'generic' },
+  { name: 'Preqveca — конференции',      url: 'https://www.preqveca.ru/conferences/',                               topic: 'M&A и сделки',            type: 'generic' },
+
+  // ── Деловые форумы (Коммерсантъ, Ведомости, РБК) ─────────────────────────────
+  { name: 'Коммерсантъ — мероприятия',   url: 'https://events.kommersant.ru/events/',                              topic: 'Бизнес-форум',            type: 'generic' },
+  { name: 'Ведомости — мероприятия',     url: 'https://events.vedomosti.ru/events/',                               topic: 'Бизнес-форум',            type: 'generic' },
+  { name: 'РБК — конференции',           url: 'https://www.rbc.ru/conference/',                                    topic: 'Бизнес-форум',            type: 'generic' },
+
+  // ── Telegram ─────────────────────────────────────────────────────────────────
+  { name: 'Aesthetics of Law (Telegram)', url: 'https://t.me/s/aestheticsoflawevents',  topic: 'Юр. мероприятия', type: 'telegram' },
+  { name: 'ГК Реестр (Telegram)',         url: 'https://t.me/s/aoreestr',               topic: 'ГК Реестр',       type: 'telegram', company: true },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -257,44 +271,6 @@ async function telegramParse(page) {
   }, { dateRegexSrc: DATE_RE.source });
 }
 
-async function findLink(browser, title) {
-  // Ищем официальный сайт мероприятия через Яндекс
-  const query = encodeURIComponent(`"${title}" официальный сайт`);
-  const page = await browser.newPage({
-    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-  });
-  try {
-    await page.goto(`https://yandex.ru/search/?text=${query}&lr=213`, {
-      waitUntil: 'domcontentloaded', timeout: 20000,
-    });
-    await page.waitForTimeout(2000);
-    const link = await page.evaluate(() => {
-      // Яндекс: результаты в блоках [data-cid] или классе serp-item
-      const SKIP = /yandex\.|youtube\.com|vk\.com|facebook|instagram|t\.me|timepad|kudago|afisha|eventbrite|all-events|expomap|2gis|wikipedia/i;
-      const selectors = [
-        '.organic__url[href]',
-        '.VanillaReact a[href*="http"]',
-        '[data-cid] a[href*="http"]',
-        '.serp-item a[href*="http"]',
-      ];
-      for (const sel of selectors) {
-        const links = Array.from(document.querySelectorAll(sel));
-        for (const a of links) {
-          const href = a.href || '';
-          if (!href.startsWith('http')) continue;
-          if (SKIP.test(href)) continue;
-          return href;
-        }
-      }
-      return '';
-    });
-    return link;
-  } catch (e) {
-    return '';
-  } finally {
-    await page.close();
-  }
-}
 
 
 async function scrapeSource(browser, source) {
@@ -309,6 +285,7 @@ async function scrapeSource(browser, source) {
       source: source.name,
       topic: classifyTopic(e.title, source.topic),
       cost: '',
+      company: source.company ? 'aoreestr' : '',
     }));
   } catch (err) {
     console.error(`Ошибка при обработке ${source.url}:`, err.message);
@@ -325,11 +302,11 @@ async function writeToSheet(rows) {
   });
   const sheets = google.sheets({ version: 'v4', auth });
 
-  const header = [['Дата', 'Название', 'Тематика', 'Город', 'Источник', 'Ссылка', 'Стоимость', 'Обновлено']];
+  const header = [['Дата', 'Название', 'Тематика', 'Город', 'Источник', 'Ссылка', 'Стоимость', 'Компания', 'Обновлено']];
   const updatedAt = new Date().toLocaleString('ru-RU');
-  const values = rows.map(r => [r.date, r.title, r.topic, r.place || '', r.source, r.link || '', r.cost || '', updatedAt]);
+  const values = rows.map(r => [r.date, r.title, r.topic, r.place || '', r.source, r.link || '', r.cost || '', r.company || '', updatedAt]);
 
-  await sheets.spreadsheets.values.clear({ spreadsheetId: SHEET_ID, range: `${SHEET_NAME}!A:H` });
+  await sheets.spreadsheets.values.clear({ spreadsheetId: SHEET_ID, range: `${SHEET_NAME}!A:I` });
   await sheets.spreadsheets.values.update({
     spreadsheetId: SHEET_ID,
     range: `${SHEET_NAME}!A1`,
@@ -346,18 +323,6 @@ async function writeToSheet(rows) {
   // 2. Динамический парсинг сайтов
   const browser = await chromium.launch();
 
-  // 2а. Автопоиск ссылок для статических мероприятий без ссылки
-  const noLink = all.filter(e => !e.link);
-  if (noLink.length > 0) {
-    console.log(`Ищем ссылки для ${noLink.length} мероприятий без сайта...`);
-    for (const e of noLink) {
-      const found = await findLink(browser, e.title);
-      if (found) {
-        e.link = found;
-        console.log(`  ✓ ${e.title.slice(0, 50)}... → ${found}`);
-      }
-    }
-  }
   for (const source of SOURCES) {
     const events = await scrapeSource(browser, source);
     console.log(`${source.name}: найдено ${events.length} мероприятий`);
