@@ -257,7 +257,36 @@ async function telegramParse(page) {
   }, { dateRegexSrc: DATE_RE.source });
 }
 
-async function scrapeSource(browser, source) {
+async function findLink(browser, title) {
+  // Ищем официальный сайт мероприятия через DuckDuckGo HTML-версию
+  const query = encodeURIComponent(title + ' официальный сайт 2026');
+  const page = await browser.newPage({ userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' });
+  try {
+    await page.goto(`https://html.duckduckgo.com/html/?q=${query}`, { waitUntil: 'domcontentloaded', timeout: 20000 });
+    const link = await page.evaluate(() => {
+      // Берём первую ссылку результата, пропуская рекламу и сами duckduckgo-домены
+      const results = Array.from(document.querySelectorAll('.result__a[href]'));
+      for (const a of results) {
+        const href = a.href || '';
+        // DuckDuckGo оборачивает ссылки в редирект — извлекаем оригинальный URL
+        const uddg = new URL(href).searchParams.get('uddg');
+        const url = uddg ? decodeURIComponent(uddg) : href;
+        if (!url || /duckduckgo\.com|duckduck\.go/i.test(url)) continue;
+        // Пропускаем агрегаторы событий — нам нужен официальный сайт
+        if (/timepad|kudago|afisha|eventbrite|all-events|expomap|2gis/i.test(url)) continue;
+        return url;
+      }
+      return '';
+    });
+    return link;
+  } catch (e) {
+    return '';
+  } finally {
+    await page.close();
+  }
+}
+
+
   const page = await browser.newPage({ userAgent: 'Mozilla/5.0 (compatible; EventsBot/1.0)' });
   try {
     await page.goto(source.url, { waitUntil: 'domcontentloaded', timeout: 60000 });
@@ -299,12 +328,25 @@ async function writeToSheet(rows) {
 }
 
 (async () => {
-  // 1. Статические мероприятия (всегда включаются) + уточняем тему
+  // 1. Статические мероприятия + уточняем тему
   let all = STATIC_EVENTS.map(e => ({ ...e, topic: classifyTopic(e.title, e.topic) }));
   console.log(`Статических мероприятий: ${all.length}`);
 
   // 2. Динамический парсинг сайтов
   const browser = await chromium.launch();
+
+  // 2а. Автопоиск ссылок для статических мероприятий без ссылки
+  const noLink = all.filter(e => !e.link);
+  if (noLink.length > 0) {
+    console.log(`Ищем ссылки для ${noLink.length} мероприятий без сайта...`);
+    for (const e of noLink) {
+      const found = await findLink(browser, e.title);
+      if (found) {
+        e.link = found;
+        console.log(`  ✓ ${e.title.slice(0, 50)}... → ${found}`);
+      }
+    }
+  }
   for (const source of SOURCES) {
     const events = await scrapeSource(browser, source);
     console.log(`${source.name}: найдено ${events.length} мероприятий`);
