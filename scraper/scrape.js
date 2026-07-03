@@ -75,7 +75,7 @@ const STATIC_EVENTS = [
     topic: 'Рынки капиталов',
     place: 'Новосибирск',
     source: 'Отраслевой календарь',
-    link: '',
+    link: 'https://sibventurefair.ru/',
     cost: '',
   },
   {
@@ -258,23 +258,33 @@ async function telegramParse(page) {
 }
 
 async function findLink(browser, title) {
-  // Ищем официальный сайт мероприятия через DuckDuckGo HTML-версию
-  const query = encodeURIComponent(title + ' официальный сайт 2026');
-  const page = await browser.newPage({ userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' });
+  // Ищем официальный сайт мероприятия через Яндекс
+  const query = encodeURIComponent(`"${title}" официальный сайт`);
+  const page = await browser.newPage({
+    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+  });
   try {
-    await page.goto(`https://html.duckduckgo.com/html/?q=${query}`, { waitUntil: 'domcontentloaded', timeout: 20000 });
+    await page.goto(`https://yandex.ru/search/?text=${query}&lr=213`, {
+      waitUntil: 'domcontentloaded', timeout: 20000,
+    });
+    await page.waitForTimeout(2000);
     const link = await page.evaluate(() => {
-      // Берём первую ссылку результата, пропуская рекламу и сами duckduckgo-домены
-      const results = Array.from(document.querySelectorAll('.result__a[href]'));
-      for (const a of results) {
-        const href = a.href || '';
-        // DuckDuckGo оборачивает ссылки в редирект — извлекаем оригинальный URL
-        const uddg = new URL(href).searchParams.get('uddg');
-        const url = uddg ? decodeURIComponent(uddg) : href;
-        if (!url || /duckduckgo\.com|duckduck\.go/i.test(url)) continue;
-        // Пропускаем агрегаторы событий — нам нужен официальный сайт
-        if (/timepad|kudago|afisha|eventbrite|all-events|expomap|2gis/i.test(url)) continue;
-        return url;
+      // Яндекс: результаты в блоках [data-cid] или классе serp-item
+      const SKIP = /yandex\.|youtube\.com|vk\.com|facebook|instagram|t\.me|timepad|kudago|afisha|eventbrite|all-events|expomap|2gis|wikipedia/i;
+      const selectors = [
+        '.organic__url[href]',
+        '.VanillaReact a[href*="http"]',
+        '[data-cid] a[href*="http"]',
+        '.serp-item a[href*="http"]',
+      ];
+      for (const sel of selectors) {
+        const links = Array.from(document.querySelectorAll(sel));
+        for (const a of links) {
+          const href = a.href || '';
+          if (!href.startsWith('http')) continue;
+          if (SKIP.test(href)) continue;
+          return href;
+        }
       }
       return '';
     });
