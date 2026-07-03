@@ -245,8 +245,8 @@ async function genericParse(page) {
   }, { dateRegexSrc: DATE_RE.source, junkRegexSrc: JUNK_RE.source });
 }
 
-async function telegramParse(page) {
-  return await page.evaluate(({ dateRegexSrc }) => {
+async function telegramParse(page, isCompany) {
+  return await page.evaluate(({ dateRegexSrc, isCompany }) => {
     const dateRe = new RegExp(dateRegexSrc, 'i');
     const out = [];
     const posts = Array.from(document.querySelectorAll('.tgme_widget_message'));
@@ -257,10 +257,12 @@ async function telegramParse(page) {
       if (!textEl || !timeEl || !postLinkEl) continue;
       const text = textEl.innerText.trim().replace(/\s+/g, ' ');
       if (text.length < 15) continue;
+      // Для корпоративного канала (@aoreestr) — только посты про реальные мероприятия
+      const EVENT_KEYWORDS = /вебинар|семинар|конференц|форум|мероприяти|круглый стол|воркшоп|митап/i;
+      if (isCompany && !EVENT_KEYWORDS.test(text)) continue;
       const linksInText = Array.from(textEl.querySelectorAll('a[href]'));
       const externalLink = linksInText.find(a => !/t\.me|telegram\.me|telegram\.org/i.test(a.href));
       const link = externalLink ? externalLink.href : postLinkEl.href;
-      // Дата берётся из текста поста (анонсы публикуются заранее)
       const dateInText = text.match(dateRe);
       const date = dateInText
         ? dateInText[0].replace(/\s+/g, ' ').trim()
@@ -268,7 +270,7 @@ async function telegramParse(page) {
       out.push({ title: text.slice(0, 180), date, link });
     }
     return out.slice(-25);
-  }, { dateRegexSrc: DATE_RE.source });
+  }, { dateRegexSrc: DATE_RE.source, isCompany: !!source.company });
 }
 
 
@@ -278,7 +280,7 @@ async function scrapeSource(browser, source) {
   try {
     await page.goto(source.url, { waitUntil: 'domcontentloaded', timeout: 60000 });
     await page.waitForTimeout(3500);
-    const events = source.type === 'telegram' ? await telegramParse(page) : await genericParse(page);
+    const events = source.type === 'telegram' ? await telegramParse(page, !!source.company) : await genericParse(page);
     return events.map(e => ({
       ...e,
       place: '',
