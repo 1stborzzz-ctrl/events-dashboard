@@ -287,6 +287,7 @@ async function findLink(browser, title) {
 }
 
 
+async function scrapeSource(browser, source) {
   const page = await browser.newPage({ userAgent: 'Mozilla/5.0 (compatible; EventsBot/1.0)' });
   try {
     await page.goto(source.url, { waitUntil: 'domcontentloaded', timeout: 60000 });
