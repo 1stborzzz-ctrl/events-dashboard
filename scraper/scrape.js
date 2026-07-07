@@ -246,6 +246,13 @@ async function genericParse(page) {
 }
 
 async function telegramParse(page, isCompany) {
+  // Скроллим вверх несколько раз чтобы подгрузить посты за ~3 месяца назад
+  // (анонсы мероприятий публикуются заранее)
+  for (var i = 0; i < 5; i++) {
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.waitForTimeout(1200);
+  }
+
   return await page.evaluate(({ dateRegexSrc, isCompany }) => {
     const dateRe = new RegExp(dateRegexSrc, 'i');
     const out = [];
