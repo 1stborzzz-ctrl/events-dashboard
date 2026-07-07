@@ -15,6 +15,24 @@ const SHEET_NAME = 'Events';
 const STATIC_EVENTS = [
   // ── Профессиональные (юр. право, рынки капиталов, Private Equity) ──────────
   {
+    date: '9-12 июля 2026',
+    title: 'Конференция ПАРТАД «Инфраструктура рынка ценных бумаг и цифровые права — 2026»',
+    topic: 'Регистраторы и депозитарии',
+    place: 'Смоленск',
+    source: 'ПАРТАД',
+    link: 'https://ircb.partad.ru/2026/Default.aspx',
+    cost: '',
+  },
+  {
+    date: '21-22 июля 2026',
+    title: 'Форум участников финансовых рынков 2026 (НАУФОР)',
+    topic: 'Рынки капиталов',
+    place: 'Москва',
+    source: 'НАУФОР',
+    link: 'https://naufor.ru/tree.asp?n=32121',
+    cost: '',
+  },
+  {
     date: '24-25 сентября 2026',
     title: 'V Казанский международный юридический форум',
     topic: 'Юридические конференции',
@@ -148,7 +166,7 @@ const SOURCES = [
   { name: 'Zakon.ru — конференции',      url: 'https://zakon.ru/Conference/List',                                   topic: 'Юридические конференции', type: 'generic' },
 
   // ── Рынки капиталов, M&A, Private Equity ─────────────────────────────────────
-  { name: 'Cbonds Congress',              url: 'https://cbonds-congress.ru/events/',                                 topic: 'Рынки капиталов',         type: 'generic' },
+  { name: 'ПАРТАД — мероприятия',          url: 'https://partad.ru/calendar/',                                       topic: 'Регистраторы и депозитарии', type: 'generic' },
   { name: 'АКРА Форум',                  url: 'https://acra-forum.ru/events/',                                      topic: 'Рынки капиталов',         type: 'generic' },
   { name: 'НАУФОР — мероприятия',        url: 'https://www.naufor.ru/tree.asp?n=21097',                            topic: 'Рынок ценных бумаг',      type: 'generic' },
   { name: 'Московская биржа',            url: 'https://www.moex.com/s1194',                                        topic: 'Рынки капиталов',         type: 'generic' },
@@ -277,7 +295,7 @@ async function telegramParse(page, isCompany) {
       out.push({ title: text.slice(0, 180), date, link });
     }
     return out.slice(-25);
-  }, { dateRegexSrc: DATE_RE.source, isCompany: !!source.company });
+  }, { dateRegexSrc: DATE_RE.source, isCompany });
 }
 
 
