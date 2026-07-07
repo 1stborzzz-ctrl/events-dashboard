@@ -280,7 +280,9 @@ async function telegramParse(page, isCompany) {
       const timeEl = post.querySelector('.tgme_widget_message_date time');
       const postLinkEl = post.querySelector('.tgme_widget_message_date');
       if (!textEl || !timeEl || !postLinkEl) continue;
-      const text = textEl.innerText.trim().replace(/\s+/g, ' ');
+      const raw = textEl.innerText.trim().replace(/\s+/g, ' ');
+      // Убираем эмодзи и лишние спецсимволы
+      const text = raw.replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{1F300}-\u{1F9FF}\u{FE00}-\u{FE0F}⚡🔑₽]/gu, '').replace(/\s{2,}/g, ' ').trim();
       if (text.length < 15) continue;
       // Для корпоративного канала (@aoreestr) — только посты про реальные мероприятия
       const EVENT_KEYWORDS = /вебинар|семинар|конференц|форум|мероприяти|круглый стол|воркшоп|митап/i;
