@@ -177,6 +177,16 @@ const SOURCES = [
   { name: 'Ведомости — мероприятия',     url: 'https://events.vedomosti.ru/events/',                               topic: 'Бизнес-форум',            type: 'generic' },
   { name: 'РБК — конференции',           url: 'https://www.rbc.ru/conference/',                                    topic: 'Бизнес-форум',            type: 'generic' },
 
+  // ── Деловые и отраслевые форумы ─────────────────────────────────────────────
+  { name: 'ТПП России — мероприятия',                        url: 'https://www.tpprf.ru/ru/events/',    topic: 'Бизнес-форум',                   type: 'generic' },
+  { name: 'Актион360 — семинары',                            url: 'https://seminar.action360.ru/',      topic: 'Юридические конференции',         type: 'generic' },
+  { name: 'КМЮФ — Казанский юрфорум',                       url: 'https://kazanlegalforum.org/',       topic: 'Юридические конференции',         type: 'generic' },
+  { name: 'Петербургский правовой саммит',                   url: 'https://pravosummit.ru/',            topic: 'Юридические конференции',         type: 'generic' },
+  { name: 'БЮФ — Балтийский юрфорум',                       url: 'https://buf.by/',                    topic: 'Юридические конференции',         type: 'generic' },
+  { name: 'Legal Business Forum',                            url: 'https://legalbusinessforum.ru/',     topic: 'Бизнес-форум',                   type: 'generic' },
+  { name: 'IP for Future Forum',                             url: 'https://ipforfuture.com/',           topic: 'Интеллектуальная собственность',  type: 'generic' },
+  { name: 'Форум «Интеллектуальная собственность» (Р-Конф)', url: 'https://ip-conf.ru/',              topic: 'Интеллектуальная собственность',  type: 'generic' },
+
   // ── Telegram ─────────────────────────────────────────────────────────────────
   { name: 'Aesthetics of Law (Telegram)', url: 'https://t.me/s/aestheticsoflawevents',  topic: 'Юр. мероприятия', type: 'telegram' },
   { name: 'ГК Реестр (Telegram)',         url: 'https://t.me/s/aoreestr',               topic: 'ГК Реестр',       type: 'telegram', company: true },
